@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TikTok Quality">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>TikTok Quality</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b0b0f;color:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif}
+main{max-width:520px;margin:auto;padding:calc(24px + env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom))}
+h1{font-size:25px;margin:0 0 5px;letter-spacing:-.7px}.sub{color:#92939c;margin:0 0 22px;font-size:13px}
+.card{background:#15151b;border:1px solid #292a31;border-radius:22px;padding:16px;margin-bottom:12px}
+.drop{min-height:230px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;border:1px dashed #4a4b55;background:#121218}
+.icon{width:58px;height:58px;border-radius:19px;background:#22222a;display:grid;place-items:center;font-size:30px;margin-bottom:13px}
+button{appearance:none;border:0;border-radius:14px;padding:13px 16px;font-weight:700;font-size:14px;cursor:pointer}
+.primary{background:#fff;color:#0b0b0f;width:100%;margin-top:14px}.secondary{background:#25252d;color:#fff;width:100%;margin-top:9px}
+.small{font-size:11px;color:#858691;margin-top:8px}.hidden{display:none!important}
+.file{display:flex;justify-content:space-between;gap:12px;align-items:center}.file strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.badge{font-size:10px;padding:6px 9px;border-radius:999px;background:#17321f;color:#9ce5af;white-space:nowrap}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:13px}.metric{background:#202027;border-radius:13px;padding:11px}.metric span{display:block;color:#81828c;font-size:10px}.metric strong{display:block;margin-top:2px;font-size:13px}
+.notice{margin-top:11px;background:#202027;border-radius:14px;padding:12px;font-size:11px;color:#a6a7af}.notice b{color:#fff}.notice p{margin:4px 0 0}
+footer{text-align:center;color:#666873;font-size:10px;margin-top:17px}
+</style>
+</head>
+<body>
+<main>
+  <h1>🎬 TikTok Quality</h1>
+  <p class="sub">iPhone MVP · original-file workflow</p>
+
+  <section id="picker" class="card drop">
+    <div class="icon">＋</div>
+    <strong>Choose a video</strong>
+    <div class="small">Your video is processed locally in this browser.</div>
+    <button class="secondary" id="choose">Choose from Photos / Files</button>
+    <input id="file" type="file" accept="video/*,.mp4,.mov,.webm" hidden>
+  </section>
+
+  <section id="result" class="card hidden">
+    <div class="file">
+      <div><strong id="name">—</strong><div class="small" id="size">—</div></div>
+      <span class="badge">ORIGINAL</span>
+    </div>
+
+    <div class="grid">
+      <div class="metric"><span>Resolution</span><strong id="resolution">—</strong></div>
+      <div class="metric"><span>Duration</span><strong id="duration">—</strong></div>
+      <div class="metric"><span>Format</span><strong id="format">—</strong></div>
+      <div class="metric"><span>Processing</span><strong>None</strong></div>
+    </div>
+
+    <div class="notice">
+      <b>🛡️ No quality reduction</b>
+      <p>This MVP does not resize, render, compress, or re-encode your video. The selected File object remains unchanged.</p>
+    </div>
+
+    <button class="primary" id="share">Share original video to TikTok</button>
+    <button class="secondary" id="again">Choose another video</button>
+    <div class="small" id="message"></div>
+  </section>
+
+  <footer>Nothing is uploaded to our server in this MVP.</footer>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let selectedFile=null;
+
+$("choose").onclick=()=>$("file").click();
+$("file").onchange=()=>{if($("file").files[0]) inspect($("file").files[0])};
+$("again").onclick=()=>{
+  selectedFile=null; $("file").value=""; $("result").classList.add("hidden"); $("picker").classList.remove("hidden"); $("message").textContent="";
+};
+
+function bytes(n){
+  const u=["B","KB","MB","GB"],i=n?Math.floor(Math.log(n)/Math.log(1024)):0;
+  return `${(n/Math.pow(1024,i)).toFixed(i?2:0)} ${u[i]}`;
+}
+function time(s){
+  if(!Number.isFinite(s))return "—";
+  const m=Math.floor(s/60), sec=Math.round(s%60).toString().padStart(2,"0");
+  return `${m}:${sec}`;
+}
+async function inspect(file){
+  selectedFile=file;
+  $("picker").classList.add("hidden"); $("result").classList.remove("hidden");
+  $("name").textContent=file.name; $("size").textContent=bytes(file.size);
+  $("format").textContent=file.type||file.name.split(".").pop().toUpperCase();
+
+  const v=document.createElement("video");
+  v.preload="metadata"; v.muted=true; v.playsInline=true;
+  const url=URL.createObjectURL(file);
+  try{
+    await new Promise((res,rej)=>{v.onloadedmetadata=res;v.onerror=rej;v.src=url});
+    $("resolution").textContent=`${v.videoWidth} × ${v.videoHeight}`;
+    $("duration").textContent=time(v.duration);
+  }catch(e){
+    $("resolution").textContent="Unavailable";$("duration").textContent="Unavailable";
+  }finally{URL.revokeObjectURL(url)}
+}
+
+$("share").onclick=async()=>{
+  if(!selectedFile)return;
+  $("message").textContent="Preparing the original file…";
+  try{
+    if(!navigator.share){
+      $("message").textContent="This browser does not support file sharing. Try Safari on iPhone.";
+      return;
+    }
+    const data={files:[selectedFile],title:"TikTok video"};
+    if(navigator.canShare && !navigator.canShare(data)){
+      $("message").textContent="iOS cannot share this video file through the current browser.";
+      return;
+    }
+    await navigator.share(data);
+    $("message").textContent="Share sheet opened.";
+  }catch(e){
+    if(e.name==="AbortError") $("message").textContent="Share cancelled.";
+    else $("message").textContent="Could not open the iOS share sheet.";
+  }
+};
+</script>
+</body>
+</html>
